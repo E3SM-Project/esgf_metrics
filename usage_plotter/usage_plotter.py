@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import Any, Dict
 
 import matplotlib.pyplot as plt
-import numpy as np
+import numpy as np  # noqa
 import pandas as pd
-from ipwhois import IPWhois, exceptions
 from tqdm import tqdm
 
 REALMS = ["ocean", "atmos", "land", "sea-ice"]
@@ -66,16 +65,18 @@ def parse_dataset_id(dataset_id: str):
     """
 
     facets = dataset_id.split(".")
+    realm = None
+    data_type = None
 
     try:
         realm = facets[4]
     except IndexError:
-        realm = None
+        print(f"Realm does not exist for dataset_id, {dataset_id}")
 
     try:
-        data_type = facets[4]
+        data_type = facets[6]
     except IndexError:
-        data_type = None
+        print(f"Realm does not exist for dataset_id, {data_type}")
 
     return realm, data_type
 
@@ -89,10 +90,7 @@ def parse_timestamp(timestamp: str, log_row: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     timestamp_str = timestamp[timestamp.find("[") + 1 : timestamp.find(":")]
-    log_row["date"] = datetime.strptime(
-        timestamp_str,
-        "%d/%b/%Y",
-    ).date()  # type: datetime.date
+    log_row["date"] = datetime.strptime(timestamp_str, "%d/%b/%Y").date()
     log_row["year"] = log_row["date"].year
     log_row["month"] = log_row["date"].month
 
@@ -114,21 +112,23 @@ def parse_log_line(log_line: str):
     """
     attrs = log_line.split()
 
-    log_row = {}  # type: Dict[str, Any]
+    log_row: Dict[str, Any] = {}
     log_row = parse_timestamp(attrs[3], log_row)
     log_row["requester_ip"] = attrs[0]
-    log_row["requester_id"] = identify_requester(log_row.get("requester_ip")) or None
+    # log_row["requester_id"] = identify_requester(log_row.get("requester_ip")) or None
 
     log_row["request_method"] = attrs[5]
     log_row["full_path"] = attrs[6]
 
+    full_path = log_row["full_path"]
+
     try:
-        idx = log_row.get("full_path").index("user_pub_work") + len("user_pub_work") + 1
+        idx = full_path.index("user_pub_work") + len("user_pub_work") + 1
     except ValueError:
         idx = None
-        print("ERROR: " + log_row.get("full_path"))
+        print(f"Error, no index for path: {full_path}")
 
-    log_row["dataset_id"] = ".".join(log_row.get("full_path")[idx:].split("/")[:-1])
+    log_row["dataset_id"] = ".".join(full_path)[idx:].split("/")[:-1]
     log_row["realm"], log_row["data_type"] = parse_dataset_id(log_row["dataset_id"])
 
     return log_row
@@ -136,7 +136,7 @@ def parse_log_line(log_line: str):
 
 def plot_requests_by_month(df: pd.DataFrame, project: str) -> pd.DataFrame:
     df_agg = df.groupby(by=["year", "month"]).size().reset_index(name="count")
-    years = df_agg["year"].unique()
+    years = df_agg["year"].unique().tolist()
 
     for year in years:
         df_agg_yr = df_agg.loc[df_agg["year"] == year]
@@ -182,7 +182,9 @@ def main():
     df_requests = pd.DataFrame(requests, columns=columns)
 
     # Aggregation plots
-    df_agg_by_month = plot_requests_by_month(df_requests, project="E3SM")  # type: plt
+    df_agg_by_month: pd.DataFrame = plot_requests_by_month(  # noqa
+        df_requests, project="E3SM"
+    )
 
 
 if __name__ == "__main__":
