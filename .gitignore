@@ -84,7 +84,10 @@ ipython_config.py
 # pyenv
 .python-version
 
-# Pycharm
+# IDE
+.vscode/
+!.vscode/launch.json
+!.vscode/settings.json
 .idea/
 
 # pipenv
@@ -131,4 +134,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-access_logs
+access_logs/
+qa/
