@@ -39,3 +39,6 @@ def setup_custom_logger(name: str) -> "Logger":
     logger.addHandler(consoleHandler)
 
     return logger
+
+
+logger = setup_custom_logger("root")
