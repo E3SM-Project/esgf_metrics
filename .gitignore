@@ -85,9 +85,9 @@ ipython_config.py
 .python-version
 
 # IDE
-.vscode/
-!.vscode/launch.json
+.vscode/*
 !.vscode/settings.json
+
 .idea/
 
 # pipenv
@@ -134,5 +134,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Input and output
 access_logs/
 qa/
+outputs/*
+!outputs/README.md
