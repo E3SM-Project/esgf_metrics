@@ -20,7 +20,7 @@ LogLine = TypedDict(
         "requester_ip": str,
         "path": str,
         "dataset_id": str,
-        "file_id": Optional[str],
+        "file_id": str,
         "access_type": str,
         "status_code": str,
         "bytes": str,
@@ -173,7 +173,7 @@ def parse_log_timestamp(log_line: LogLine, raw_timestamp: str) -> LogLine:
     Example timestamp: "[15/Jul/2019:03:18:49 -0700]"
 
     :param log_line: Parsed log line
-    :type log_line: Dict[str, Any]
+    :type log_line: LogLine
     :param raw_timestamp: Raw timestamp from log line
     :type raw_timestamp: str
     :return: Parsed log line with datetime values
@@ -189,7 +189,10 @@ def parse_log_timestamp(log_line: LogLine, raw_timestamp: str) -> LogLine:
 
 
 def parse_log_path(log_line: LogLine, path_in_log_line: str) -> LogLine:
-    """Parses the path in the log line for the dataset id, file id, and facets.
+    """Parses the path in the log line for the dataset id and file id.
+
+    If a dataset id is found, it iterates through the available facets and returns
+    the match.
 
     :param log_line: Parsed log line
     :type log_line: LogLine
@@ -201,7 +204,7 @@ def parse_log_path(log_line: LogLine, path_in_log_line: str) -> LogLine:
     try:
         idx = path_in_log_line.index("user_pub_work") + len("user_pub_work") + 1
     except ValueError:
-        # This usually means an HTTP 302/404 request (incorrect path)
+        # This usually means an HTTP 302/404 request
         idx = None  # type: ignore
 
     log_line["dataset_id"] = ".".join(path_in_log_line[idx:].split("/")[:-1])
@@ -221,8 +224,9 @@ def parse_log_path(log_line: LogLine, path_in_log_line: str) -> LogLine:
 def gen_report(df: pd.DataFrame, facet: Optional[str] = None) -> pd.DataFrame:
     """Generates a report for total requests and data accessed on a monthly basis.
 
-    It calculates the equivalent fiscal month based on the fiscal year using the
-    calendar month.
+    Using the calendar month, it calculates the equivalent fiscal month based
+    on the fiscal year For example, July is the 7th month for a CY, but the 1st
+    month of the FY for E3SM.
 
     :param df: DataFrame containing parsed logs
     :type df: pd.DataFrame
@@ -248,18 +252,16 @@ def gen_report(df: pd.DataFrame, facet: Optional[str] = None) -> pd.DataFrame:
     df_data_by_mon["gb"] = df_data_by_mon.mb.div(1024)
 
     # Calendar year report
-    df_mon_report = pd.merge(df_req_by_mon, df_data_by_mon, on=agg_cols)
-    df_mon_report = df_mon_report.sort_values(by=agg_cols)
+    df_cy_report = pd.merge(df_req_by_mon, df_data_by_mon, on=agg_cols)
+    df_cy_report = df_cy_report.sort_values(by=agg_cols)
+    # Replace all facet None values for grouping
+    df_cy_report[facet] = df_cy_report[facet].fillna(f"No {facet}")
 
-    # Replace all None values for grouping
-    df_mon_report[facet] = df_mon_report[facet].fillna(f"No {facet}")
-
-    # Fiscal year report
-    df_fy_report = resample_to_quarter(df_mon_report, facet)
-    return df_fy_report
+    df_cy_fy_report = calendar_to_fiscal(df_cy_report, facet)
+    return df_cy_fy_report
 
 
-def resample_to_quarter(df: pd.DataFrame, facet: Optional[str]) -> pd.DataFrame:
+def calendar_to_fiscal(df: pd.DataFrame, facet: Optional[str]) -> pd.DataFrame:
     """
     Resamples a DataFrame to calculate the fiscal year, quarter, and month
     using the calendar year and month.
@@ -299,13 +301,7 @@ def resample_to_quarter(df: pd.DataFrame, facet: Optional[str]) -> pd.DataFrame:
         .reset_index()
     )
     # Reorder columns for a cleaner dataframe output.
-    df_qt = df_qt[
-        [
-            *agg_cols,
-            "requests",
-            "gb",
-        ]
-    ]
+    df_qt = df_qt[[*agg_cols, "requests", "gb"]]
 
     return df_qt
 
@@ -320,7 +316,7 @@ def convert_to_fiscal_month(calendar_month: int) -> int:
     :return: Fiscal month
     :rtype: int
     """
-    map_calendar_to_fiscal = {
+    month_map = {
         7: 1,
         8: 2,
         9: 3,
@@ -334,4 +330,4 @@ def convert_to_fiscal_month(calendar_month: int) -> int:
         5: 11,
         6: 12,
     }
-    return map_calendar_to_fiscal[calendar_month]
+    return month_map[calendar_month]

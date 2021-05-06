@@ -45,7 +45,11 @@ This software parses ESGF Apache access logs for quarterly metrics specific to E
     3) Parse each log line for the directory:
         "/thredds/fileServer/user_pub_work/E3SM/1_0/historical/1deg_atm_60-30km_ocean/land/native/model-output/mon/ens1/v1/20180215.DECKv1b_H1.ne30_oEC.edison.clm2.h0.1850-01.nc"
     4) Parse directory for the dataset id:
-        "E3SM.1_0.historical.1deg_atm_60-30km_ocean.land.native.model-output.mon.ens1.v1"
+        Before:
+          "/E3SM/1_0/historical/1deg_atm_60-30km_ocean/land/native/model-output/mon/ens1/v1/"
+        After:
+          "E3SM.1_0.historical.1deg_atm_60-30km_ocean.land.native.model-output.mon.ens1.v1"
+          (NOTE: Refer to the templates below for how to translate this)
     5) Parse directory for file id:
         "20180215.DECKv1b_H1.ne30_oEC.edison.clm2.h0.1850-01.nc"
     6) Parse for additional info (e.g., timestamp, facets)
