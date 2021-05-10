@@ -11,10 +11,11 @@
   "python.linting.flake8Enabled": true,
   "python.linting.flake8Args": ["--config=setup.cfg"],
   "python.linting.mypyEnabled": true,
-  "python.pythonPath": "/opt/miniconda3/envs/usage_plotter_dev/bin/python",
+  "python.pythonPath": "/opt/miniconda3/envs/esgf_metrics_dev/bin/python",
   "python.testing.pytestArgs": [],
   "python.testing.unittestEnabled": false,
   "python.testing.nosetestsEnabled": false,
   "python.testing.pytestEnabled": true,
-  "jupyter.notebookFileRoot": "${workspaceFolder}"
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "jupyter.alwaysScrollOnNewCell": true
 }
