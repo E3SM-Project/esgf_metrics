@@ -525,7 +525,7 @@ class LogParser:
         return df
 
     def _add_cumsum_cols(self, df: pd.DataFrame, facet: Optional[str]) -> pd.DataFrame:
-        """Adds cumulative sum columns for requests and GB of data downloaded.
+        """Adds cumulative sum columns for requests and data downloads (GB).
 
         Parameters
         ----------
