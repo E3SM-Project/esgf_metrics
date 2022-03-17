@@ -254,7 +254,7 @@ class LogParser:
     def _get_log_abs_paths(self) -> List[str]:
         """Gets the absolute paths for each log file.
 
-        This method walks through sub-directories as well.
+        This method also walks through sub-directories to find access logs.
 
         The directory structure of the access logs should look like:
 
