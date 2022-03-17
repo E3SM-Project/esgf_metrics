@@ -134,8 +134,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Input and output
-access_logs/
+# Repository specific
 qa/
-outputs/*
-!outputs/README.md
+output/*
+!output/README.md
+*.csv
+*.png
