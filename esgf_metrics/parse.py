@@ -40,7 +40,7 @@ LogLine = TypedDict(
 )
 
 
-# Maps calendar month to fiscal month based on E3SM fiscal year
+# Maps calendar month to fiscal month based on E3SM fiscal year.
 E3SM_CY_TO_FY_MAP = {
     7: 1,
     8: 2,
