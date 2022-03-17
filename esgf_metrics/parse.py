@@ -169,7 +169,7 @@ class LogParser:
         df["calendar_year_month"] = df["date"].dt.to_period("M")
         df["calendar_year"] = df["date"].dt.year
         df["calendar_month"] = df["date"].dt.month
-        df = self._add_fiscal_year_col(df)
+        df = self._add_fiscal_date_cols(df)
 
         # Drop unnecessary columns for a cleaner output.
         df = df.drop(columns=["path", "calendar_year", "calendar_month"])
@@ -494,15 +494,15 @@ class LogParser:
         # Monthly metrics with each month assigned an E3SM fiscal year label
         df_monthly = pd.merge(df_req_by_mon, df_data_by_mon, on=agg_cols)
         df_monthly = df_monthly.sort_values(by=agg_cols)
-        df_monthly = self._add_fiscal_year_col(df_monthly)
+        df_monthly = self._add_fiscal_date_cols(df_monthly)
 
         # Add cumulative sum columns for requests and data access
         df_monthly = self._add_cumsum_cols(df_monthly, facet)
         df_monthly = self._reorder_columns(df_monthly, facet)
         return df_monthly
 
-    def _add_fiscal_year_col(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Adds fiscal year related columns using calendar year column values.
+    def _add_fiscal_date_cols(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Adds fiscal date columns based on the calendar date columns.
 
         This method resamples the monthly metrics DataFrame to extract the
         fiscal year, quarter, and month using the calendar year and month.
