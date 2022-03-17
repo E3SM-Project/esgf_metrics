@@ -266,7 +266,7 @@ class LogParser:
         Returns
         -------
         List[str]
-            List of absolute paths for each log file.
+            List of absolute paths for the log files.
 
         Raises
         ------
