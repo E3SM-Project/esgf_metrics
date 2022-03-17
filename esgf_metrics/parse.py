@@ -511,7 +511,7 @@ class LogParser:
         Returns
         -------
         pd.DataFrame
-            The monthly metrics DataFrame with fiscal year information.
+            The monthly metrics DataFrame with fiscal date columns.
         """
         df["fiscal_year_quarter"] = df.apply(
             lambda row: row.calendar_year_month.asfreq("Q-JUN"), axis=1
