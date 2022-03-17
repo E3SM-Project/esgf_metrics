@@ -560,7 +560,7 @@ class LogParser:
         df : pd.DataFrame
             A DataFrame of aggregated metrics with the original column order.
         facet : Optional[str]
-            The facet column used for grouping in addition to the main
+            The facet column used for grouping, in addition to the main
             aggregation columns.
 
         Returns
