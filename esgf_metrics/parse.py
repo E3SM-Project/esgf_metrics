@@ -1,22 +1,18 @@
-r"""Parse module for parsing ESGF Apache access logs"""
+"""Parse module for parsing ESGF Apache access logs"""
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import DefaultDict, List, Literal, Optional, Tuple, TypedDict, get_args
+from typing import DefaultDict, List, Optional, TypedDict
 
 import pandas as pd
 from tqdm import tqdm
 
-from esgf_metrics.facets import AVAILABLE_FACETS
+from esgf_metrics.facets import AVAILABLE_FACETS, Project
 from esgf_metrics.logger import setup_custom_logger
 from esgf_metrics.settings import DEBUG_MODE, LOGS_DIR, OUTPUT_DIR
 from esgf_metrics.utils import bytes_to
 
 logger = setup_custom_logger(__name__)
-
-# Type annotations
-ProjectTitle = Literal["E3SM", "E3SM CMIP6"]
-PROJECT_TITLES: Tuple[ProjectTitle, ...] = get_args(ProjectTitle)
 
 LogLine = TypedDict(
     "LogLine",
@@ -33,7 +29,7 @@ LogLine = TypedDict(
         "status_code": str,
         "bytes": str,
         "mb": float,
-        "project": ProjectTitle,
+        "project": Project,
         "realm": Optional[str],
         "data_type": Optional[str],
         # facets
@@ -64,40 +60,151 @@ E3SM_CY_TO_FY_MAP = {
 class LogParser:
     """
     A class representing LogParser, which is used for parsing ESGF Apache
-    access logs and plotting aggregated metrics.
-
-    # TODO: Add option for fiscal years -> remove paths that aren't in fiscal
-    # year
+    access logs for generating metrics.
     """
 
     def __init__(self) -> None:
-        # Path to the root directory of the access logs for ESGF nodes
-        # (esgf-data1, esgf-data3, and esgf-data4). Note, access logs must be
+        # Path to the root directory of the access logs from ESGF nodes
+        # (esgf-data1, esgf-data3, and esgf-data4). Access logs must be
         # stored in sub-directories labeled with the name of the node.
         self.log_dir = LOGS_DIR
 
-        # Directory to store outputs such as plots and quality assurance reports.
+        # Directory to store outputs including plots and validation reports.
         self.output_dir = OUTPUT_DIR
-
-        # Set to True to perform parsing and plotting on a select number of
-        # files (runtime user input). This is useful for code development.
-        self.debug_mode = DEBUG_MODE
 
         # Absolute paths of each log file located under self.log_dir.
         self.log_paths = self._get_log_abs_paths()
+
+        # Set to True to perform parsing and plotting on a select number of
+        # files. This is useful for code development or debugging.
+        # TODO: Maybe this should be an argparse because it is tedious to
+        # type it in during runtime.
+        self.debug_mode = DEBUG_MODE
         if self.debug_mode:
             num_logs = int(input("How many access logs do you want to parse? "))
             self.log_paths = self.log_paths[0:num_logs]
 
-        # Run quality assurance checks on the available log files.
-        self._run_qa_checks()
+        # Dictionary with the parent key being the fiscal year and the value
+        # being a sub-dictionary of report types. The key of the sub-dictionary
+        # is the report type and the value is a DataFrame storing the report.
+        """
+        Example:
+        {
+            "FY2021": {
+                "logs": pd.DataFrame(),
+                "log_count_by_group": pd.DataFrame()
+            }
+            "FY2022": {
+                "logs": pd.DataFrame(),
+                "log_count_by_group": pd.DataFrame()
+            }
+        }
+        """
+        self.validation_reports: DefaultDict[
+            str, DefaultDict[str, pd.DataFrame]
+        ] = defaultdict(lambda: defaultdict(pd.DataFrame))
 
         # DataFrame for storing parsed log lines of the available log files.
-        # This DataFrame is aggregated to generate metrics and plots.
-        self.df_logs: Optional[pd.DataFrame] = None
+        self.logs: pd.DataFrame = pd.DataFrame()
 
-    def parse_logs(self) -> pd.DataFrame:
+        # DataFrame of cumulative sum metrics by project.
+        self.metrics: pd.DataFrame = pd.DataFrame()
+
+        # Dictionary with the key being the project and the value being
+        # a sub-dictionary of facet reports. The key of the
+        # sub-dictionary is the facet name and the value is a DataFrame storing
+        # the report.
+        """
+        Example:
+        {
+            "E3SM and E3SM CMIP6": {"realm": pd.DataFrame()},
+            "E3SM": {"time_frequency": pd.DataFrame()},
+            "E3SM CMIP6": {"activity": pd.DataFrame(), "variable_id": pd.DataFrame()},
+        }
+        """
+        self.metrics_by_facet: DefaultDict[
+            Project, DefaultDict[str, pd.DataFrame]
+        ] = defaultdict(lambda: defaultdict(pd.DataFrame))
+
+    def validate_logs(self, to_csv: bool = True):
+        """Performs validation checks on the access logs and generates reports.
+
+        Checks include:
+          1. Ensure that logs are stored by node.
+
+        CSV reports include:
+          1. Access logs filenames with labels for node, calendar date info,
+            and fiscal date info.
+          2. Count of available access logs by fiscal year and node.
+            - Helps determine if there are gaps in access logs.
+            - Gaps may indicate httpd wasn’t running on a node(s) and/or some
+              logs weren’t backed up properly at that time.
+
+        Parameters
+        ----------
+        to_csv : bool, optional
+           Save the output as CSV, by default True.
+
+        Raises
+        ------
+        ValueError
+            If the node substring was not found in one or more access logs.
+        """
+        logger.info("Performing validation on access logs.")
+        df = pd.DataFrame({"path": self.log_paths})
+        df["node"] = df.path.str.extract(r"(esgf-data\d{1})")
+
+        if df.node.isna().any():
+            raise ValueError(
+                "The node substring was not found in one or more of the access log "
+                "absolute paths. Make sure that access logs are stored in "
+                "sub-directories by node (`/esgf-data1`, `/esgf-data3`, `/esgf-data4`)."
+            )
+
+        df["filename"] = df.path.str.extract(r"(access_log-\d{8}$)")
+        df = df[df["filename"].notna()]
+
+        df["date"] = df.filename.str.extract(r"(\d{8}$)")
+        df["date"] = pd.to_datetime(df.date, format="%Y%m%d")
+        df["calendar_year_month"] = df["date"].dt.to_period("M")
+        df["calendar_year"] = df["date"].dt.year
+        df["calendar_month"] = df["date"].dt.month
+        df = self._add_fiscal_year_col(df)
+
+        # Drop unnecessary columns for a cleaner output.
+        df = df.drop(columns=["path", "calendar_year", "calendar_month"])
+
+        logger.info(
+            "Generating reports by fiscal year and node. Reports are stored in "
+            f"{self.output_dir}."
+        )
+        logger.info(
+            "Check the reports for any gaps in access logs. Gaps might "
+            "indicate that httpd wasn't running on a node(s) and/or some logs "
+            "weren't backed up properly at that time."
+        )
+        fiscal_years = df.fiscal_year.unique()
+        for year in fiscal_years:
+            df_fy_logs = df.query(f"fiscal_year == {year}").reset_index(drop=True)
+            df_fy_logs = df_fy_logs.sort_values(by="date")
+            df_fy_log_count = self._log_count_by_group(df_fy_logs)
+
+            self.validation_reports[f"FY{year}"]["logs"] = df_fy_logs
+            self.validation_reports[f"FY{year}"]["log_counts"] = df_fy_log_count
+
+            if to_csv:
+                df_fy_logs.to_csv(f"{self.output_dir}/fy_{year}_logs.csv", index=False)
+                df_fy_log_count.to_csv(
+                    f"{self.output_dir}/fy_{year}_log_count_by_group.csv", index=False
+                )
+
+    def parse_logs(self, to_csv: bool = False) -> pd.DataFrame:
         """Parse the ESGF Apache access logs in the specific path.
+
+        Parameters
+        -------
+        to_csv : bool, optional
+            Save the parsed log lines as a CSV, by default False.
 
         Returns
         -------
@@ -118,32 +225,32 @@ class LogParser:
         df = pd.DataFrame(log_lines)
         df = self._extract_dates(df)
 
-        self.df_logs = df
+        # TODO: The CSV will be extremely large.
+        # Maybe we should save this information in a postgres database?
+        if to_csv:
+            df.to_csv(f"{self.output_dir}/parsed_access_log_lines.csv")
 
-    def get_metrics(self):
-        """Generates aggregated metrics by project and project facet.
+        self.logs = df
+
+    def generate_metrics(self):
+        """Generates aggregated metrics by project and facets.
 
         Using the calendar month, it calculates the equivalent fiscal month based
         on the fiscal year For example, July is the 7th month for a CY, but the 1st
         month of the FY for E3SM.
         """
-        if self.df_logs is None:
+        if self.logs is None:
             raise ValueError(
                 "Logs have not been parsed yet, call `parse_logs()` first."
             )
         logger.info(
-            "Generating cumulative sums of requests data downloaded by project and by "
-            "project facet."
+            "Generating cumulative sums of requests data downloaded by project and "
+            "by facet."
         )
-        self.df_metrics = self._get_monthly_metrics()
-
-        self.metrics_by_facet: DefaultDict[
-            str, DefaultDict[str, pd.DataFrame]
-        ] = defaultdict(lambda: defaultdict(pd.DataFrame))
-
+        self.metrics = self._generate_monthly_metrics()
         for project, facets in AVAILABLE_FACETS.items():
             for facet in facets.keys():
-                df_metrics = self._get_monthly_metrics(facet)
+                df_metrics = self._generate_monthly_metrics(facet)
                 df_metrics.loc[df_metrics.project == project]
                 self.metrics_by_facet[project][facet] = df_metrics
 
@@ -186,67 +293,11 @@ class LogParser:
         abs_log_paths.sort()
         return abs_log_paths
 
-    def _run_qa_checks(self):
-        """This method runs quality assurance checks on the list of access logs.
-
-        Checks include:
-          1. Ensure that logs are stored by node.
-          2. Returns a count of available access logs by fiscal year and node.
-            - Helps determine if there are gaps in access logs.
-            - Gaps may indicate httpd wasn’t running on a node(s) and/or some logs
-              weren’t backed up properly at that time.
-
-        The outputs of the QA checks are stored as CSVs.
-        """
-        logger.info(
-            "Performing QA on access logs and generating reports by fiscal year and "
-            "node. Reports are stored in {self.output_dir}."
-        )
-        df = pd.DataFrame({"path": self.log_paths})
-        df["node"] = df.path.str.extract(r"(esgf-data\d{1})")
-
-        if df.node.isna().any():
-            raise ValueError(
-                "The node substring was not found in some or all of the access log "
-                "absolute paths. Make sure that access logs are stored in "
-                "sub-directories by node (`/esgf-data1`, `/esgf-data3`, `/esgf-data4`)."
-            )
-
-        df["filename"] = df.path.str.extract(r"(access_log-\d{8}$)")
-        df = df[df["filename"].notna()]
-
-        df["date"] = df.filename.str.extract(r"(\d{8}$)")
-        df["date"] = pd.to_datetime(df.date, format="%Y%m%d")
-        df["calendar_year_month"] = df["date"].dt.to_period("M")
-        df["calendar_year"] = df["date"].dt.year
-        df["calendar_month"] = df["date"].dt.month
-        df = self._add_fiscal_year_col(df)
-
-        # Drop unnecessary columns for a cleaner output.
-        df = df.drop(columns=["path", "calendar_year", "calendar_month"])
-
-        fiscal_years = df.fiscal_year.unique()
-
-        for year in fiscal_years:
-            df_fy_logs = df.query(f"fiscal_year == {year}").reset_index(drop=True)
-            df_fy_logs = df_fy_logs.sort_values(by="date")
-            df_fy_logs.to_csv(f"{self.output_dir}/fy_{year}_access_logs.csv")
-
-            df_fy_log_count = self._log_count_by_group(df_fy_logs)
-            df_fy_log_count.to_csv(
-                f"{self.output_dir}/fy_{year}_log_count_by_group.csv"
-            )
-        logger.info(
-            "Check the reports for any gaps in access logs. Gaps might "
-            "indicate that httpd wasn't running on a node(s) and/or some logs "
-            "weren't backed up properly at that time."
-        )
-
     def _log_count_by_group(self, df):
         df_gb = (
             df.groupby(["calendar_year_month", "node"])
             .agg(total_logs=("filename", "count"), filenames=("filename", ", ".join))
-            .reset_index(drop=True)
+            .reset_index()
         )
         df_gb["complete_logs"] = df_gb["total_logs"] > 3
         return df_gb
@@ -281,7 +332,7 @@ class LogParser:
                     yield line
 
     def _parse_log_line(self, raw_line: str) -> LogLine:
-        """Parses a log line for HTTP request and project facet information.
+        """Parses a log line for HTTP request and facet information.
 
         Refer to README.md for directory and dataset id templates.
 
@@ -407,8 +458,8 @@ class LogParser:
 
         return df
 
-    def _get_monthly_metrics(self, facet: Optional[str] = None):
-        """Gets monthly metrics by project or project facet.
+    def _generate_monthly_metrics(self, facet: Optional[str] = None):
+        """Generates monthly metrics by project and facet (optionally).
 
         Parameters
         ----------
@@ -421,7 +472,7 @@ class LogParser:
         pd.DataFrame
             A DataFrame of monthly metrics.
         """
-        df_logs = self.df_logs.copy()  # type: ignore
+        df_logs = self.logs.copy()
         agg_cols = ["project", "calendar_year_month", "calendar_year", "calendar_month"]
 
         if facet:

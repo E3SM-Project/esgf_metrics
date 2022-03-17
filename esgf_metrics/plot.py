@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, DefaultDict, List, Optional
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from esgf_metrics.facets import PROJECTS, Project
 from esgf_metrics.logger import setup_custom_logger
-from esgf_metrics.parse import E3SM_CY_TO_FY_MAP, PROJECT_TITLES, ProjectTitle
+from esgf_metrics.parse import E3SM_CY_TO_FY_MAP
 from esgf_metrics.settings import OUTPUT_DIR
 
 if TYPE_CHECKING:
@@ -26,8 +27,8 @@ def plot_cumsum_by_project(df: pd.DataFrame):
     df : pd.DataFrame
         The monthly metrics by project.
     """
-    for project_title in PROJECT_TITLES:
-        df_project = df.loc[df.project == project_title]
+    for project in PROJECTS:
+        df_project = df.loc[df.project == project]
         fiscal_years: List[str] = df_project.fiscal_year.unique()
 
         for fiscal_year in fiscal_years:
@@ -37,7 +38,7 @@ def plot_cumsum_by_project(df: pd.DataFrame):
 
             df_fy.plot(
                 ax=ax[0],
-                title=f"{project_title} FY{fiscal_year} Cumulative Requests",
+                title=f"{project} FY{fiscal_year} Cumulative Requests",
                 x="fiscal_month",
                 y="cumulative_requests",
                 xticks=range(1, 13),
@@ -47,7 +48,7 @@ def plot_cumsum_by_project(df: pd.DataFrame):
             )
             df_fy.plot(
                 ax=ax[1],
-                title=f"{project_title} FY{fiscal_year} Cumulative Data Downloaded",
+                title=f"{project} FY{fiscal_year} Cumulative Data Downloads",
                 x="fiscal_month",
                 y="cumulative_gb",
                 xticks=range(1, 13),
@@ -58,11 +59,11 @@ def plot_cumsum_by_project(df: pd.DataFrame):
 
             _modify_fig(fig)
             _modify_xtick_labels(fig, ax, int(fiscal_year))
-            _save_metrics_and_plots(fig, df_fy, project_title, fiscal_year)
+            _save_metrics_and_plots(fig, df_fy, project, fiscal_year)
 
 
 def plot_cumsum_by_facet(
-    metrics_by_facet: DefaultDict[str, DefaultDict[str, pd.DataFrame]],
+    metrics_by_facet: DefaultDict[Project, DefaultDict[str, pd.DataFrame]],
 ):
     """
     Plots the cumulative sums for the number of requests and GB of data
@@ -74,7 +75,7 @@ def plot_cumsum_by_facet(
         The monthly metrics by project and facet.
     """
     # TODO: Optimize this nested for loop.
-    for project_title, facet_metrics in metrics_by_facet.items():
+    for project, facet_metrics in metrics_by_facet.items():
         for facet, df_metrics in facet_metrics.items():
             fiscal_years: List[str] = df_metrics.fiscal_year.unique()
             for fiscal_year in fiscal_years:
@@ -106,25 +107,19 @@ def plot_cumsum_by_facet(
                 pivot_table.cumulative_requests.plot(
                     **base_config,
                     ax=ax[0],
-                    title=f"{project_title} FY{fiscal_year} Cumulative Requests by `{facet}`",
+                    title=f"{project} FY{fiscal_year} Cumulative Requests by `{facet}`",
                     ylabel="Requests",
                 )
                 pivot_table.cumulative_gb.plot(
                     **base_config,
                     ax=ax[1],
-                    title=f"{project_title} FY{fiscal_year} Cumulative Data Downloaded by `{facet}`",
+                    title=f"{project} FY{fiscal_year} Cumulative Data Downloads by `{facet}`",
                     ylabel="Data Access (GB)",
                 )
 
                 fig = _modify_fig(fig, legend_labels=df_fy[facet].unique())
                 ax = _modify_xtick_labels(fig, ax, int(fiscal_year))
-
-                # Save outputs for analysis
-                filename = _get_filename(
-                    project_title, fiscal_year, facet  # type:ignore
-                )
-                df_fy.to_csv(f"{filename}.csv")
-                fig.savefig(filename, dpi=fig.dpi, facecolor="w")
+                _save_metrics_and_plots(fig, df_fy, project, fiscal_year)
 
 
 def _modify_fig(fig: "Figure", legend_labels: Optional[List[str]] = None) -> "Figure":
@@ -221,7 +216,7 @@ def _get_xticklabels(fiscal_year: int) -> List[str]:
 def _save_metrics_and_plots(
     fig: "Figure",
     df: pd.DataFrame,
-    project_title: ProjectTitle,
+    project_title: Project,
     fiscal_year: str,
     facet: Optional[str] = None,
 ):
@@ -234,27 +229,27 @@ def _save_metrics_and_plots(
     df : pd.DataFrame
         The metrics DataFrame.
     project_title : ProjectTitle
-        The title of the project.
+        The project title.
     fiscal_year : str
         The fiscal year for the project.
     facet : Optional[str], optional
-        The name of the facet (if the metrics are based by project facets), by
-        default None.
+        The name of the facet (if the metrics are based by project and
+        facets), by default None.
     """
     filename = _get_filename(project_title, fiscal_year, facet)
-    df.to_csv(f"{filename}.csv")
+    df.to_csv(f"{filename}.csv", index=False)
     fig.savefig(filename, dpi=fig.dpi, facecolor="w")
 
 
 def _get_filename(
-    project_title: ProjectTitle, fiscal_year: str, facet: Optional[str]
+    project_title: Project, fiscal_year: str, facet: Optional[str]
 ) -> str:
-    """_summary_
+    """Gets the name of the output file.
 
     Parameters
     ----------
     project_title : ProjectTitle
-        The name of the project.
+        The project title.
     fiscal_year : str
         The fiscal year for the metrics.
     facet : Optional[str]
