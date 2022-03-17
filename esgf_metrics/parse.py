@@ -513,7 +513,6 @@ class LogParser:
         pd.DataFrame
             The monthly metrics DataFrame with fiscal year information.
         """
-        # Get equivalent fiscal information from calendar dates
         df["fiscal_year_quarter"] = df.apply(
             lambda row: row.calendar_year_month.asfreq("Q-JUN"), axis=1
         )
