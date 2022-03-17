@@ -1,8 +1,5 @@
 from esgf_metrics.parse import LogParser
-from esgf_metrics.plot import (
-    plot_cumsum_by_project,
-    plot_cumsum_by_facet,
-)
+from esgf_metrics.plot import plot_cumsum_by_facet, plot_cumsum_by_project
 
 
 def main():
