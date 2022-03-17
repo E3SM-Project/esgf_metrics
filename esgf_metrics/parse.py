@@ -235,9 +235,6 @@ class LogParser:
     def generate_metrics(self):
         """Generates aggregated metrics by project and facets.
 
-        Using the calendar month, it calculates the equivalent fiscal month based
-        on the fiscal year For example, July is the 7th month for a CY, but the 1st
-        month of the FY for E3SM.
         """
         if self.logs is None:
             raise ValueError(
