@@ -133,7 +133,7 @@ class LogParser:
           1. Ensure that logs are stored by node.
 
         CSV reports include:
-          1. Access logs filenames with labels for node, calendar date info,
+          1. Access log filenames with labels for node, calendar date info,
             and fiscal date info.
           2. Count of available access logs by fiscal year and node.
             - Helps determine if there are gaps in access logs.
