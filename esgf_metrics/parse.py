@@ -415,7 +415,6 @@ class LogParser:
         log_line : LogLine
             The log line.
 
-
         Returns
         -------
         LogLine
