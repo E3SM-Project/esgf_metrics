@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 from esgf_metrics.facets import AVAILABLE_FACETS, Project
 from esgf_metrics.logger import setup_custom_logger
-from esgf_metrics.settings import DEBUG_MODE, LOGS_DIR, OUTPUT_DIR
 from esgf_metrics.utils import bytes_to
 
 logger = setup_custom_logger(__name__)
@@ -63,14 +62,14 @@ class LogParser:
     access logs for generating metrics.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, logs_dir: str, output_dir: str, debug_mode: bool) -> None:
         # Path to the root directory of the access logs from ESGF nodes
         # (esgf-data1, esgf-data3, and esgf-data4). Access logs must be
         # stored in sub-directories labeled with the name of the node.
-        self.log_dir = LOGS_DIR
+        self.log_dir = logs_dir
 
         # Directory to store outputs including plots and validation reports.
-        self.output_dir = OUTPUT_DIR
+        self.output_dir = output_dir
 
         # Absolute paths of each log file located under self.log_dir.
         self.log_paths = self._get_log_abs_paths()
@@ -79,7 +78,7 @@ class LogParser:
         # files. This is useful for code development or debugging.
         # TODO: Maybe this should be an argparse because it is tedious to
         # type it in during runtime.
-        self.debug_mode = DEBUG_MODE
+        self.debug_mode = debug_mode
         if self.debug_mode:
             num_logs = int(input("How many access logs do you want to parse? "))
             self.log_paths = self.log_paths[0:num_logs]
