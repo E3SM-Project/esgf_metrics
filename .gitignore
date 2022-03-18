@@ -136,7 +136,5 @@ dmypy.json
 
 # Repository specific
 qa/
-output/*
-!output/README.md
 *.csv
 *.png

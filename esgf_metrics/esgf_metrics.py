@@ -8,10 +8,10 @@ def main():
     log_parser = LogParser(LOGS_DIR, OUTPUT_DIR)
     log_parser.qa_logs()
     log_parser.parse_logs()
-    log_parser.generate_metrics()
+    log_parser.get_metrics()
 
     # Plot monthly cumulative sum metrics by project.
-    plot_cumsum_by_project(log_parser.df_fiscal_metrics)
+    plot_cumsum_by_project(log_parser.df_monthly_metrics)
 
     # Plot monthly cumulative sums metrics by project type and facet.
     plot_cumsum_by_facet(log_parser.fiscal_facet_metrics)

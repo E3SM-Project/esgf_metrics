@@ -7,7 +7,7 @@ from typing import DefaultDict, Dict, List, Optional, TypedDict
 import pandas as pd
 from tqdm import tqdm
 
-from esgf_metrics.facets import AVAILABLE_FACETS, Project
+from esgf_metrics.facets import AVAILABLE_FACETS, Project, ProjectTitle
 from esgf_metrics.logger import setup_custom_logger
 from esgf_metrics.utils import bytes_to
 
@@ -62,6 +62,11 @@ class LogParser:
     access logs for generating metrics.
     """
 
+    FiscalFacetMetrics = DefaultDict[
+        ProjectTitle,
+        DefaultDict[str, pd.DataFrame],
+    ]
+
     def __init__(self, logs_dir: str, output_dir: str, num_logs: Optional[int] = None):
         # Path to the root directory of the access logs from ESGF nodes
         # (esgf-data1, esgf-data3, and esgf-data4). Access logs must be
@@ -102,6 +107,7 @@ class LogParser:
         self.df_log_rows: pd.DataFrame = pd.DataFrame()
 
         # DataFrame of fiscal monthly metrics by project.
+        self.df_monthly_metrics: pd.DataFrame = pd.DataFrame()
         self.df_fiscal_metrics: pd.DataFrame = pd.DataFrame()
 
         # Dictionary with the key being the project and the value being
@@ -116,9 +122,10 @@ class LogParser:
             "E3SM CMIP6": {"activity": pd.DataFrame(), "variable_id": pd.DataFrame()},
         }
         """
-        self.fiscal_facet_metrics: DefaultDict[
-            Project, DefaultDict[str, pd.DataFrame]
-        ] = defaultdict(lambda: defaultdict(pd.DataFrame))
+
+        self.fiscal_facet_metrics: LogParser.FiscalFacetMetrics = defaultdict(
+            lambda: defaultdict(pd.DataFrame)
+        )
 
     def qa_logs(self, to_csv: bool = True):
         """Run quality assurance checks on the access logs and generate reports.
@@ -183,10 +190,10 @@ class LogParser:
         self.qa_reports["log_counts"] = self._log_count_by_group(df)
         if to_csv:
             self.qa_reports["logs"].to_csv(
-                f"{self.output_dir}/qa_logs.csv", index=False
+                f"{self.output_dir}/qa_reports/qa_logs.csv", index=False
             )
             self.qa_reports["log_counts"].to_csv(
-                f"{self.output_dir}/qa_log_count_by_group.csv", index=False
+                f"{self.output_dir}/qa_reports/qa_log_count_by_group.csv", index=False
             )
 
     def parse_logs(self, to_csv: bool = False) -> pd.DataFrame:
@@ -223,7 +230,7 @@ class LogParser:
 
         self.df_log_rows = df
 
-    def generate_metrics(self):
+    def get_metrics(self):
         """Generates metrics for 200 GET requests by project and facets.
 
         Raises
@@ -239,12 +246,21 @@ class LogParser:
             "Generating cumulative sums of requests data downloaded by project and "
             "by facet."
         )
-        self.df_fiscal_metrics = self._generate_metrics()
+        self.df_monthly_metrics = self._get_monthly_metrics()
+        self.df_fiscal_metrics = self._get_fiscal_metrics(
+            self.df_monthly_metrics.copy()
+        )
+
         for project, facets in AVAILABLE_FACETS.items():
             for facet in facets.keys():
-                df_metrics = self._generate_metrics(facet)
-                df_metrics.loc[df_metrics.project == project]
-                self.fiscal_facet_metrics[project][facet] = df_metrics
+                # TODO: We might want to store this in the dictionary for
+                # plotting.
+                df_monthly_metrics = self._get_monthly_metrics(facet)
+                df_fy_metrics = self._get_fiscal_metrics(
+                    df_monthly_metrics.copy(), facet
+                )
+                df_fy_metrics.loc[df_fy_metrics.project == project]
+                self.fiscal_facet_metrics[project][facet] = df_fy_metrics
 
     def _get_log_abs_paths(self) -> List[str]:
         """Gets the absolute paths for each log file.
@@ -450,39 +466,14 @@ class LogParser:
 
         return df
 
-    def _generate_metrics(self, facet: Optional[str] = None):
-        """Generates monthly metrics by project and facet (optionally).
-
-        Parameters
-        ----------
-        facet : Optional[str], optional
-            The facet column used for grouping in addition to the main
-            aggregation columns, by default None.
-
-        Returns
-        -------
-        pd.DataFrame
-            A DataFrame of monthly metrics.
-        """
+    def _get_monthly_metrics(self, facet: Optional[str] = None) -> pd.DataFrame:
         df = self.df_log_rows.copy()
         agg_cols = ["project", "calendar_year_month", "calendar_year", "calendar_month"]
 
-        if facet:
+        if facet is not None:
             agg_cols.insert(1, facet)
             df[facet] = df[facet].fillna(value="N/A")
 
-        # Get total monthly sums for requests and size of data downloads.
-        df = self._get_monthly_sums(df, agg_cols)
-
-        # Get fiscal monthly cumulative sums for requests and size of data
-        # download.
-        df = self._add_fiscal_date_cols(df)
-        df = self._get_fiscal_monthly_cumsums(df, facet)
-        df = self._reorder_columns(df, facet)
-
-        return df
-
-    def _get_monthly_sums(self, df: pd.DataFrame, agg_cols) -> pd.DataFrame:
         # Get total requests (includes all request types) and total GET requests
         # by month.
         df_reqs = df.value_counts(subset=agg_cols).reset_index(name="total_requests")
@@ -499,13 +490,39 @@ class LogParser:
             df_log_get_reqs.groupby(by=agg_cols).agg({"mb": "sum"}).reset_index()
         )
         df_data_size["total_gb"] = df_data_size.mb.div(1024)
+        df_data_size = df_data_size.drop(columns="mb")
 
         # Merge DataFrames into a single DataFrame
         df_final = pd.merge(df_reqs, df_data_size, on=agg_cols)
-
         df_final = df_final.sort_values(by=agg_cols)
 
         return df_final
+
+    def _get_fiscal_metrics(
+        self, df_monthly: pd.DataFrame, facet: Optional[str] = None
+    ):
+        """Generates monthly metrics by project and facet (optionally).
+
+        Parameters
+        ----------
+        df_monthly : pd.DataFrame
+            The monthly metrics DataFrame.
+        facet : Optional[str], optional
+            The facet column used for grouping in addition to the main
+            aggregation columns, by default None.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame of monthly metrics.
+        """
+        # Get fiscal monthly cumulative sums for requests and size of data
+        # download.
+        df = self._add_fiscal_date_cols(df_monthly)
+        df = self._get_fiscal_monthly_cumsums(df, facet)
+        df = self._reorder_columns(df, facet)
+
+        return df
 
     def _add_fiscal_date_cols(self, df: pd.DataFrame) -> pd.DataFrame:
         """Adds fiscal date columns based on the calendar date columns.
@@ -530,7 +547,6 @@ class LogParser:
         df["fiscal_month"] = df.apply(
             lambda row: E3SM_CY_TO_FY_MAP[row.calendar_month], axis=1
         )
-        df["fiscal_quarter"] = df.fiscal_year_quarter.dt.strftime("%q").astype("int")
 
         return df
 
@@ -553,7 +569,7 @@ class LogParser:
             The DataFrame of monthly metrics with cumulative sums.
         """
         gb_cols = ["project", "fiscal_year"]
-        if facet:
+        if facet is not None:
             gb_cols.append(facet)
 
         df["cumulative_requests"] = df.groupby(gb_cols)["total_requests"].cumsum()
@@ -588,7 +604,6 @@ class LogParser:
             "fiscal_year_quarter",
             "fiscal_year",
             "fiscal_month",
-            "fiscal_quarter",
             "calendar_year_month",
             "calendar_year",
             "calendar_month",
@@ -599,7 +614,7 @@ class LogParser:
             "total_gb",
             "cumulative_gb",
         ]
-        if facet:
+        if facet is not None:
             columns.insert(1, facet)
 
         return df[columns]
