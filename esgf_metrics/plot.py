@@ -19,8 +19,8 @@ logger = setup_custom_logger(__name__)
 
 def plot_cumsum_by_project(df: pd.DataFrame):
     """
-    Plots the cumulative sums of the number of requests and GB of data
-    downloaded by project and fiscal year.
+    Plots the cumulative sums of the number of requests and downloads by
+    project and fiscal year.
 
     Parameters
     ----------
@@ -38,7 +38,7 @@ def plot_cumsum_by_project(df: pd.DataFrame):
 
             df_fy.plot(
                 ax=ax[0],
-                title=f"{project} FY{fiscal_year} Cumulative Requests",
+                title=f"{project} FY{fiscal_year} Cumulative HTTP Requests",
                 x="fiscal_month",
                 y="cumulative_requests",
                 xticks=range(1, 13),
@@ -48,12 +48,12 @@ def plot_cumsum_by_project(df: pd.DataFrame):
             )
             df_fy.plot(
                 ax=ax[1],
-                title=f"{project} FY{fiscal_year} Cumulative Data Downloads",
+                title=f"{project} FY{fiscal_year} Cumulative Downloads",
                 x="fiscal_month",
-                y="cumulative_gb",
+                y="cumulative_get_requests",
                 xticks=range(1, 13),
                 xlabel="Month",
-                ylabel="Data Access (GB)",
+                ylabel="Downloads",
                 legend=False,
             )
 
@@ -66,8 +66,8 @@ def plot_cumsum_by_facet(
     metrics_by_facet: DefaultDict[Project, DefaultDict[str, pd.DataFrame]],
 ):
     """
-    Plots the cumulative sums for the number of requests and GB of data
-    downloaded for each fiscal year by facet.
+    Plots the cumulative sums for the number of requests and data downloads by
+    fiscal year and facet.
 
     Parameters
     ----------
@@ -85,7 +85,7 @@ def plot_cumsum_by_facet(
                     pd.pivot_table(
                         df_fy,
                         index="fiscal_month",
-                        values=["cumulative_requests", "cumulative_gb"],
+                        values=["cumulative_requests", "cumulative_get_requests"],
                         columns=facet,
                         aggfunc="sum",
                     )
@@ -107,14 +107,14 @@ def plot_cumsum_by_facet(
                 pivot_table.cumulative_requests.plot(
                     **base_config,
                     ax=ax[0],
-                    title=f"{project} FY{fiscal_year} Cumulative Requests by `{facet}`",
+                    title=f"{project} FY{fiscal_year} Cumulative HTTP Requests by `{facet}`",
                     ylabel="Requests",
                 )
-                pivot_table.cumulative_gb.plot(
+                pivot_table.cumulative_get_requests.plot(
                     **base_config,
                     ax=ax[1],
-                    title=f"{project} FY{fiscal_year} Cumulative Data Downloads by `{facet}`",
-                    ylabel="Data Access (GB)",
+                    title=f"{project} FY{fiscal_year} Cumulative Downloads by `{facet}`",
+                    ylabel="Downloads",
                 )
 
                 fig = _modify_fig(fig, legend_labels=df_fy[facet].unique())
