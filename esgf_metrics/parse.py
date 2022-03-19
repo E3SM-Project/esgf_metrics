@@ -226,7 +226,7 @@ class LogParser:
         # TODO: The CSV will be extremely large.
         # Maybe we should save this information in a postgres database?
         if to_csv:
-            df.to_csv(f"{self.output_dir}/parsed_access_log_lines.csv")
+            df.to_csv(f"{self.output_dir}/parsed_access_log_lines.csv", chunksize=1000)
 
         self.df_log_rows = df
 
