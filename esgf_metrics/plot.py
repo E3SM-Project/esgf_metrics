@@ -34,36 +34,40 @@ def plot_cumsum_by_project(df: pd.DataFrame):
     ].cumsum()
     df["cumulative_gb"] = df.groupby(["project"])["total_gb"].cumsum()
 
+    base_config: pd.DataFrame.plot.__init__ = {
+        "kind": "line",
+        "legend": False,
+        "style": ".-",
+        "sharex": False,
+        "x": "calendar_year_month",
+        "xlabel": "Month",
+        "rot": 0,
+    }
+
     for project in PROJECTS:
         df_project = df.loc[df.project == project]
         fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(16, 12))
 
         df_project.plot(
+            **base_config,
             ax=ax[0],
             title=f"{project} Cumulative HTTP Requests",
-            x="calendar_year_month",
             y="cumulative_requests",
-            xlabel="Year and Month",
             ylabel="Requests",
-            legend=False,
         )
         df_project.plot(
+            **base_config,
             ax=ax[1],
             title=f"{project} Cumulative Downloads",
-            x="calendar_year_month",
             y="cumulative_get_requests",
-            xlabel="Year and Month",
             ylabel="Downloads",
-            legend=False,
         )
         df_project.plot(
+            **base_config,
             ax=ax[2],
             title=f"{project} Cumulative Download Size",
-            x="calendar_year_month",
             y="cumulative_gb",
-            xlabel="Year and Month",
             ylabel="GB",
-            legend=False,
         )
 
         _modify_fig(fig)
@@ -80,44 +84,45 @@ def plot_fiscal_cumsum_by_project(df: pd.DataFrame):
     df : pd.DataFrame
         The monthly metrics by project.
     """
+    base_config: pd.DataFrame.plot.__init__ = {
+        "kind": "line",
+        "legend": False,
+        "style": ".-",
+        "sharex": False,
+        "x": "fiscal_month",
+        "xticks": range(1, 13),
+        "xlabel": "Month",
+        "rot": 0,
+    }
+
     for project in PROJECTS:
         df_project = df.loc[df.project == project]
         fiscal_years: List[str] = df_project.fiscal_year.unique()
 
         for fiscal_year in fiscal_years:
-            df_fy = df_project.loc[df_project.fiscal_year == fiscal_year]
-
             fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(16, 12))
 
+            df_fy = df_project.loc[df_project.fiscal_year == fiscal_year]
             df_fy.plot(
+                **base_config,
                 ax=ax[0],
                 title=f"{project} FY{fiscal_year} Cumulative HTTP Requests",
-                x="fiscal_month",
                 y="cumulative_requests",
-                xticks=range(1, 13),
-                xlabel="Month",
                 ylabel="Requests",
-                legend=False,
             )
             df_fy.plot(
+                **base_config,
                 ax=ax[1],
                 title=f"{project} FY{fiscal_year} Cumulative Downloads",
-                x="fiscal_month",
                 y="cumulative_get_requests",
-                xticks=range(1, 13),
-                xlabel="Month",
                 ylabel="Downloads",
-                legend=False,
             )
-
             df_project.plot(
+                **base_config,
                 ax=ax[2],
                 title=f"{project} Cumulative Download Size",
-                x="fiscal_month",
                 y="cumulative_gb",
-                xlabel="Month",
                 ylabel="GB",
-                legend=False,
             )
 
             _modify_fig(fig)
@@ -139,12 +144,11 @@ def plot_cumsum_by_facet(metrics_by_facet: LogParser.FiscalFacetMetrics):
         "kind": "line",
         "legend": False,
         "style": ".-",
-        "sharex": True,
+        "sharex": False,
         "xticks": range(1, 13),
         "xlabel": "Month",
         "rot": 0,
     }
-
     for project, facet_metrics in metrics_by_facet.items():
         for facet, df_metrics in facet_metrics.items():
             fiscal_years: List[str] = df_metrics.fiscal_year.unique()
