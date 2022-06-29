@@ -117,7 +117,7 @@ def plot_fiscal_cumsum_by_project(df: pd.DataFrame):
                 y="cumulative_get_requests",
                 ylabel="Downloads",
             )
-            df_project.plot(
+            df_fy.plot(
                 **base_config,
                 ax=ax[2],
                 title=f"{project} Cumulative Download Size",

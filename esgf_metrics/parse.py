@@ -242,10 +242,7 @@ class LogParser:
             raise ValueError(
                 "Logs have not been parsed yet, call `parse_logs()` first."
             )
-        logger.info(
-            "Generating cumulative sums of requests data downloaded by project and "
-            "by facet."
-        )
+        logger.info("Generating monthly metrics.")
         self.df_monthly_metrics = self._get_monthly_metrics()
         self.df_fiscal_metrics = self._get_fiscal_metrics(
             self.df_monthly_metrics.copy()
