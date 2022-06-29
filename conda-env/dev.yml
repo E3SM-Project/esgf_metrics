@@ -13,6 +13,8 @@ dependencies:
   - pandas=1.4.1
   - tqdm=4.63.0
   - python-dotenv=0.19.2
+  - sqlalchemy=1.4.39
+  - psycopg2-binary=2.9.3
   # Additional
   # ==================
   - bump2version==1.0.1

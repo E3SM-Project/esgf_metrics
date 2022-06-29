@@ -10,17 +10,18 @@ Metrics include:
 
 ## Usage
 
-1.  Install Anaconda
-2.  Install and activate Conda environment
+1.  Install Miniconda and Docker with Docker-compose
+2.  Install and activate the Conda environment
 
         conda env create -n conda-env/dev.yml
         conda activate esgf_metrics_dev
 
-3.  Copy `.env.template` as `.env`
-4.  Configure the environment variables in `.env`
-5.  Run the package
+3.  Copy `.env.template` as `.env` and configure the environment variables
+4.  Build the docker-compose services
 
-        python -m esgf_metrics.esgf_metrics
+        sudo docker-compose up
+
+5.  The `esgf_metrics` service will now automatically run the `esgf_metrics` to parse new logs and adds them to the database on a weekly basis.
 
 6.  View CSV and plots outputs in `/outputs`
 
