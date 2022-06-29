@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 
 """The setup script."""
-
-from typing import List
-
 from setuptools import find_packages, setup
 
-with open("README.rst") as readme_file:
+with open("README.md") as readme_file:
     readme = readme_file.read()
 
 # https://packaging.python.org/discussions/install-requires-vs-requirements/#install-requires
-install_requires: List[str] = ["matplotlib", "numpy", "pandas" "tqdm", "python-dotenv"]
 test_requires = ["pytest>=3"]
 
 setup(
@@ -30,7 +26,6 @@ setup(
         "A Python package that parses ESGF Apache logs for E3SM data download metrics "
         "on a quarterly basis.",
     ),
-    install_requires=install_requires,
     license="Apache-2.0",
     long_description=readme,
     include_package_data=True,
