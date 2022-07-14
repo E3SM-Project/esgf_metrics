@@ -138,3 +138,6 @@ dmypy.json
 qa/
 *.csv
 *.png
+
+ # Environment variables file
+.env

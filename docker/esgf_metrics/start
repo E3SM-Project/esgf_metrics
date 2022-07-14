@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+echo "Installing the esgf_metrics package to the conda environment."
+conda run -n esgf_metrics_dev pip install .
+
+echo "Initializing the postgres database."
+conda run -n esgf_metrics_dev python esgf_metrics/database/initialize.py
+
+# Populate environment variables file for Cron to use.
+# Source: https://stackoverflow.com/a/41938139
+printenv | grep -v "no_proxy" >> /etc/environment
+
+echo "Running Cron job to parse new logs 12AM every Monday."
+cron -f
