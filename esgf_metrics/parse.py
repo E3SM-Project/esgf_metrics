@@ -144,7 +144,7 @@ class LogParser:
         logger.info("Database insertion completed")
 
     def get_metrics(self):
-        """Generates metrics for 200 GET requests by project and facets.
+        """Generates metrics for successful requests by project and facets.
         Raises
         ------
         ValueError
@@ -228,7 +228,7 @@ class LogParser:
 
         This method also walks through sub-directories to find access logs.
 
-        Access logs should be stored the node:
+        Access logs should be stored by node:
 
           - `/aims3`
           - `/esgf-data1`
