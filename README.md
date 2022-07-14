@@ -1,6 +1,6 @@
 # ESGF Metrics
 
-A Python package that parses ESGF Apache logs for E3SM requests to generates metrics.
+A Python package that parses ESGF Apache logs for E3SM data request metrics.
 
 Metrics include:
 

@@ -23,8 +23,7 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     description=(
-        "A Python package that parses ESGF Apache logs for E3SM data download metrics "
-        "on a quarterly basis.",
+        "A Python package that parses ESGF Apache logs for E3SM data request metrics."
     ),
     license="Apache-2.0",
     long_description=readme,

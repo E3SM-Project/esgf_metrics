@@ -265,15 +265,13 @@ class LogParser:
         if self.debug_mode:
             paths = paths[0:2]
 
-        paths = self._remove_parsed_logs(paths)
+        paths = self._keep_unparsed_logs(paths)
         paths = sorted(paths)
 
         return paths
 
-    def _remove_parsed_logs(self, paths: List[str]) -> List[str]:
-        """
-        Removes paths for logs that have already been parsed from the list of
-        logs.
+    def _keep_unparsed_logs(self, paths: List[str]) -> List[str]:
+        """Keep unparsed log paths in the list of logs to parse.
 
         Parameters
         ----------
