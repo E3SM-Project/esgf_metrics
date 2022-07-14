@@ -4,7 +4,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-echo "Installing the esgf_metrics package in the conda environment."
+echo "Installing the esgf_metrics package to the conda environment."
 conda run -n esgf_metrics_dev pip install .
 
 echo "Initializing the postgres database."
