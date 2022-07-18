@@ -600,12 +600,10 @@ class LogParser:
             The monthly metrics DataFrame with fiscal date columns.
         """
         df["fiscal_year_quarter"] = df.apply(
-            lambda row: row.calendar_year_month.asfreq("Q-JUN"), axis=1
+            lambda row: row.year_month.asfreq("Q-JUN"), axis=1
         )
         df["fiscal_year"] = df.fiscal_year_quarter.dt.strftime("%F").astype("int")
-        df["fiscal_month"] = df.apply(
-            lambda row: E3SM_CY_TO_FY_MAP[row.calendar_month], axis=1
-        )
+        df["fiscal_month"] = df.apply(lambda row: E3SM_CY_TO_FY_MAP[row.month], axis=1)
 
         return df
 
