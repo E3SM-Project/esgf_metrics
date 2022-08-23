@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from esgf_metrics.database.settings import engine
-from esgf_metrics.facets import AVAILABLE_FACETS, Project, ProjectTitle
+from esgf_metrics.facets import AVAILABLE_FACETS, Project
 from esgf_metrics.logger import setup_custom_logger
 from esgf_metrics.settings import LOGS_DIR, OUTPUT_DIR
 from esgf_metrics.utils import bytes_to
@@ -68,7 +68,7 @@ class LogParser:
     """
 
     FiscalFacetMetrics = DefaultDict[
-        ProjectTitle,
+        Project,
         DefaultDict[str, pd.DataFrame],
     ]
 
@@ -405,7 +405,8 @@ class LogParser:
 
         # FIXME: This is suboptimal, it should be done after all log lines
         # are already in the DataFrame.
-        for facet, options in AVAILABLE_FACETS.items():
+        project_facets = AVAILABLE_FACETS[log_line["project"]]
+        for facet, options in project_facets.items():
             facet_value = None
             for option in options:
                 if option in dataset_id:

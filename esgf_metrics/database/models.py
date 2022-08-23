@@ -32,7 +32,6 @@ class LogFile(Base):
     fiscal_year_quarter = Column(String, nullable=False)
     fiscal_year = Column(Integer, nullable=False)
     fiscal_month = Column(Integer, nullable=False)
-    fiscal_quarter = Column(Integer, nullable=False)
 
     requests = relationship("LogRequest", back_populates="log_file")
     __table_args__ = (UniqueConstraint("path", name="_path_uc"),)
