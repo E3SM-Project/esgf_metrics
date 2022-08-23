@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List, Optional
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from esgf_metrics.facets import PROJECTS, ProjectTitle
+from esgf_metrics.facets import PROJECTS, Project
 from esgf_metrics.logger import setup_custom_logger
 from esgf_metrics.parse import E3SM_CY_TO_FY_MAP, LogParser
 from esgf_metrics.settings import OUTPUT_DIR
@@ -290,7 +290,7 @@ def _get_xticklabels(fiscal_year: int) -> List[str]:
 def _save_metrics_and_plots(
     fig: "Figure",
     df: pd.DataFrame,
-    project_title: ProjectTitle,
+    project_title: Project,
     fiscal_year: Optional[str] = None,
     facet: Optional[str] = None,
 ):
@@ -302,7 +302,7 @@ def _save_metrics_and_plots(
         The Figure object.
     df : pd.DataFrame
         The metrics DataFrame.
-    project_title : ProjectTitle
+    project_title : Project
         The project title.
     fiscal_year : str
         The fiscal year for the project.
@@ -316,13 +316,13 @@ def _save_metrics_and_plots(
 
 
 def _get_filename(
-    project_title: ProjectTitle, fiscal_year: Optional[str], facet: Optional[str]
+    project_title: Project, fiscal_year: Optional[str], facet: Optional[str]
 ) -> str:
     """Gets the name of the output file.
 
     Parameters
     ----------
-    project_title : ProjectTitle
+    project_title : Project
         The project title.
     fiscal_year : Optional[str]
         The fiscal year for the metrics.
