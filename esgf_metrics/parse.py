@@ -405,7 +405,7 @@ class LogParser:
 
         # FIXME: This is suboptimal, it should be done after all log lines
         # are already in the DataFrame.
-        for facet, options in AVAILABLE_FACETS.values():
+        for facet, options in AVAILABLE_FACETS.items():
             facet_value = None
             for option in options:
                 if option in dataset_id:
