@@ -1,10 +1,13 @@
 """Plot module for plotting ESGF metrics."""
 from typing import TYPE_CHECKING, List, Optional
 
+import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
-from esgf_metrics.facets import PROJECTS, Project
+from esgf_metrics.database.settings import engine
+from esgf_metrics.facets import PROJECTS
 from esgf_metrics.logger import setup_custom_logger
 from esgf_metrics.parse import E3SM_CY_TO_FY_MAP, LogParser
 from esgf_metrics.settings import OUTPUT_DIR
@@ -17,61 +20,83 @@ if TYPE_CHECKING:
 logger = setup_custom_logger(__name__)
 
 
-def plot_cumsum_by_project(df: pd.DataFrame):
+def plot_cumsum_by_project():
     """
     Plots the cumulative sums of the number of requests and downloads by
     project.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The monthly metrics by project.
     """
-    df["calendar_year_month"] = df["calendar_year_month"].astype(str)
-    df["cumulative_requests"] = df.groupby(["project"])["total_requests"].cumsum()
-    df["cumulative_get_requests"] = df.groupby(["project"])[
-        "total_get_requests"
-    ].cumsum()
-    df["cumulative_gb"] = df.groupby(["project"])["total_gb"].cumsum()
+    df = pd.read_sql(
+        """
+        SELECT
+            year_month,
+            project,
+            cumsum_requests AS             "Cumulative Requests",
+            (cumsum_gigabytes / 1024) AS   "Cumulative Downloads"
+        FROM metrics_monthly
+        """,
+        con=engine,
+    )
 
     base_config: pd.DataFrame.plot.__init__ = {
         "kind": "line",
-        "legend": False,
-        "style": ".-",
+        "legend": True,
         "sharex": False,
-        "x": "calendar_year_month",
+        "x": "year_month",
         "xlabel": "Month",
-        "rot": 0,
+        "rot": 45,
     }
 
-    for project in PROJECTS:
-        df_project = df.loc[df.project == project]
-        fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(16, 12))
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 6))
+    fig.suptitle("E3SM Cumulative Data Requests and Downloads by File Format Type")
+    formatter = FuncFormatter(_ax_in_millions)
 
-        df_project.plot(
+    for index, project in enumerate(PROJECTS):
+        df_proj = df.loc[df.project == project]
+        df_proj = df_proj.sort_values(by="year_month")
+
+        # Plot the cumulative requests on the first y-axis.
+        ax = df_proj.plot(
             **base_config,
-            ax=ax[0],
-            title=f"{project} Cumulative HTTP Requests",
-            y="cumulative_requests",
-            ylabel="Requests",
-        )
-        df_project.plot(
-            **base_config,
-            ax=ax[1],
-            title=f"{project} Cumulative Downloads",
-            y="cumulative_get_requests",
-            ylabel="Downloads",
-        )
-        df_project.plot(
-            **base_config,
-            ax=ax[2],
-            title=f"{project} Cumulative Download Size",
-            y="cumulative_gb",
-            ylabel="GB",
+            ax=axes[index],
+            title=f"{project} Format",
+            y="Cumulative Requests",
         )
 
+        # Configure y-axis.
+        ax.set_ylabel("# of Requests (Millions)")
+        ax.yaxis.set_major_formatter(formatter)
+
+        # Hide the x-axis label
+        x_axis = ax.xaxis
+        x_axis.label.set_visible(False)
+
+        # Plot the cumulative downloads on the secondary y-axis.
+        df_proj.plot(
+            "year_month", "Cumulative Downloads", secondary_y=True, ax=ax, color="r"
+        )
+        ax.right_ax.set_ylabel("Downloads (TB)")
+        # Align the secondary y-axis using the same ticks.
+        ax.right_ax.set_yticks(np.arange(0, df["Cumulative Downloads"].max(), 40))
+
+        # Perform general figure modifications and save.
         _modify_fig(fig)
-        _save_metrics_and_plots(fig, df_project, project)
+
+    # Add disclaimer caption about logs possibly being missing.
+    text = (  # noqa: W605
+        "** Metrics are aggregated from ESGF access logs available starting in 2019-07 "
+        "to now."
+    )
+    fig.text(0.5, 0.01, text, wrap=True, ha="center", fontsize=10)
+    text2 = (
+        "Results might be higher since logs could not be recovered from before 2019-07."
+    )
+    fig.text(0.5, -0.014, text2, wrap=True, ha="center", fontsize=10)
+
+    # These values might change since logs are parsed on a weekly basis.
+    min_date, max_date = df.year_month.min(), df.year_month.max()
+    _save_metrics_and_plots(
+        fig, df, f"E3SM Cumulative Metrics ({min_date} to {max_date})"
+    )
 
 
 def plot_fiscal_cumsum_by_project(df: pd.DataFrame):
@@ -290,7 +315,7 @@ def _get_xticklabels(fiscal_year: int) -> List[str]:
 def _save_metrics_and_plots(
     fig: "Figure",
     df: pd.DataFrame,
-    project_title: Project,
+    filename: str,
     fiscal_year: Optional[str] = None,
     facet: Optional[str] = None,
 ):
@@ -302,28 +327,28 @@ def _save_metrics_and_plots(
         The Figure object.
     df : pd.DataFrame
         The metrics DataFrame.
-    project_title : Project
-        The project title.
+    filename : str
+        The base filename.
     fiscal_year : str
         The fiscal year for the project.
     facet : Optional[str], optional
         The name of the facet (if the metrics are based by project and
         facets), by default None.
     """
-    filename = _get_filename(project_title, fiscal_year, facet)
+    filename = _get_filename(filename, fiscal_year, facet)
     df.to_csv(f"{filename}.csv", index=False)
     fig.savefig(filename, dpi=fig.dpi, facecolor="w")
 
 
 def _get_filename(
-    project_title: Project, fiscal_year: Optional[str], facet: Optional[str]
+    filename: str, fiscal_year: Optional[str], facet: Optional[str]
 ) -> str:
     """Gets the name of the output file.
 
     Parameters
     ----------
-    project_title : Project
-        The project title.
+    filename : str
+        The base filename.
     fiscal_year : Optional[str]
         The fiscal year for the metrics.
     facet : Optional[str]
@@ -336,7 +361,7 @@ def _get_filename(
     """
     sub_dir = "/metrics_by_project"
 
-    filename = f"{project_title}"
+    filename = f"{filename}"
 
     if fiscal_year:
         filename = filename + f"_FY{fiscal_year}"
@@ -346,3 +371,7 @@ def _get_filename(
         filename = filename + f"_by_{facet}"
 
     return f"{OUTPUT_DIR}/{sub_dir}/{filename}"
+
+
+def _ax_in_millions(x_val, position=None):
+    return "%1.1fM" % (x_val * 1e-6)

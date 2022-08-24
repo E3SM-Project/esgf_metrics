@@ -5,9 +5,9 @@ from typing import DefaultDict, Optional
 import pandas as pd
 
 from esgf_metrics.database.settings import engine
-from esgf_metrics.facets import AVAILABLE_FACETS, ProjectTitle
+from esgf_metrics.facets import Project
 from esgf_metrics.logger import setup_custom_logger
-from esgf_metrics.parse import E3SM_CY_TO_FY_MAP
+from esgf_metrics.utils import _cast_period_cols_to_str
 
 logger = setup_custom_logger(__name__)
 
@@ -19,7 +19,7 @@ class MetricsGenerator:
     """
 
     FiscalFacetMetrics = DefaultDict[
-        ProjectTitle,
+        Project,
         DefaultDict[str, pd.DataFrame],
     ]
 
@@ -45,7 +45,15 @@ class MetricsGenerator:
         )
 
     def to_sql(self):
-        pass
+        df_fiscal_metrics = _cast_period_cols_to_str(self.df_fiscal_metrics)
+        df_monthly_metrics = _cast_period_cols_to_str(self.df_monthly_metrics)
+
+        df_monthly_metrics.to_sql(
+            "metrics_monthly", con=engine, if_exists="append", index=False
+        )
+        df_fiscal_metrics.to_sql(
+            "metrics_fiscal", con=engine, if_exists="append", index=False
+        )
 
     def get_metrics(self):
         """Generates metrics for successful requests by project and facets.
@@ -54,39 +62,45 @@ class MetricsGenerator:
         ValueError
             If logs have not been parsed yet.
         """
-        logger.info("Generating monthly metrics.")
         self.df_monthly_metrics = self._get_monthly_metrics()
         self.df_fiscal_metrics = self._get_fiscal_metrics(
             self.df_monthly_metrics.copy()
         )
 
-        for project, facets in AVAILABLE_FACETS.items():
-            for facet in facets.keys():
-                # TODO: We might want to store this in the dictionary for plotting.
-                df_monthly_metrics = self._get_monthly_metrics(facet)
-                df_fy_metrics = self._get_fiscal_metrics(
-                    df_monthly_metrics.copy(), facet
-                )
-                df_fy_metrics.loc[df_fy_metrics.project == project]
-                self.fiscal_facet_metrics[project][facet] = df_fy_metrics
+        # for project, facets in AVAILABLE_FACETS.items():
+        #     for facet in facets.keys():
+        #         # TODO: We might want to store this in the dictionary for plotting.
+        #         df_monthly_metrics = self._get_monthly_metrics(facet)
+        #         df_fy_metrics = self._get_fiscal_metrics(
+        #             df_monthly_metrics.copy(), facet
+        #         )
+        #         df_fy_metrics.loc[df_fy_metrics.project == project]
+        #         self.fiscal_facet_metrics[project][facet] = df_fy_metrics
 
     def _get_monthly_metrics(self, facet: Optional[str] = None) -> pd.DataFrame:
+        logger.info("Generating monthly metrics by E3SM file output type.")
         df = pd.read_sql(
             """
-        SELECT lf.year,
-            lf.month,
-            lr.project,
-            COUNT(*) as               sum_requests,
-            SUM(lr.megabytes / 1024) sum_gigabytes
-        FROM log_request lr
+            SELECT
+                lf.year_month,
+                lf.year,
+                lf.month,
+                lr.project,
+                COUNT(*) as               sum_requests,
+                SUM(lr.megabytes / 1024)  sum_gigabytes
+            FROM log_request lr
                 LEFT JOIN log_file lf ON lr.log_id = lf.id
-        GROUP BY lr.project, lf.year, lf.month;""",
+            GROUP BY lr.project, lf.year_month, lf.year, lf.month;
+            """,
             con=engine,
         )
 
-        df[["cumsum_requests", "cumsum_gigabytes"]] = df.groupby(
-            ["year", "project"]
-        ).agg({"sum_requests": "cumsum", "sum_gigabytes": "cumsum"})
+        df[["cumsum_requests", "cumsum_gigabytes"]] = df.groupby("project").agg(
+            {"sum_requests": "cumsum", "sum_gigabytes": "cumsum"}
+        )
+
+        df["year_month"] = pd.PeriodIndex(df["year_month"], freq="M")
+        df = df.sort_values(by=["project", "year"])
 
         return df
 
@@ -108,99 +122,26 @@ class MetricsGenerator:
         """
         # Get fiscal monthly cumulative sums for requests and size of data
         # download.
-        df = self._add_fiscal_date_cols(df_monthly)
-        df = self._get_fiscal_monthly_cumsums(df, facet)
-        df = self._reorder_columns(df, facet)
+        logger.info("Generating fiscal metrics by E3SM file output type.")
 
-        return df
-
-    def _add_fiscal_date_cols(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Adds fiscal date columns based on the calendar date columns.
-        This method resamples the monthly metrics DataFrame to extract the
-        fiscal year, quarter, and month using the calendar year and month.
-        Parameters
-        ----------
-        df : pd.DataFrame
-            The monthly metrics DataFrame.
-        Returns
-        -------
-        pd.DataFrame
-            The monthly metrics DataFrame with fiscal date columns.
-        """
-        df["fiscal_year_quarter"] = df.apply(
-            lambda row: row.year_month.asfreq("Q-JUN"), axis=1
+        df = pd.read_sql(
+            """
+            SELECT
+                lf.fiscal_year,
+                lf.fiscal_year_quarter,
+                lr.project,
+                COUNT(*) as               sum_requests,
+                SUM(lr.megabytes / 1024)  sum_gigabytes
+            FROM log_request lr
+                LEFT JOIN log_file lf ON lr.log_id = lf.id
+            GROUP BY lf.fiscal_year, lr.project, lf.fiscal_year_quarter;
+            """,
+            con=engine,
         )
-        df["fiscal_year"] = df.fiscal_year_quarter.dt.strftime("%F").astype("int")
-        df["fiscal_month"] = df.apply(lambda row: E3SM_CY_TO_FY_MAP[row.month], axis=1)
+
+        df[["cumsum_requests", "cumsum_gigabytes"]] = df.groupby(["project"]).agg(
+            {"sum_requests": "cumsum", "sum_gigabytes": "cumsum"}
+        )
+        df = df.sort_values(by=["project", "fiscal_year"])
 
         return df
-
-    def _get_fiscal_monthly_cumsums(
-        self, df: pd.DataFrame, facet: Optional[str]
-    ) -> pd.DataFrame:
-        """Adds cumulative sum columns for requests and data downloads (GB).
-
-        Parameters
-        ----------
-        df_monthly : pd.DataFrame
-            The DataFrame of monthly metrics
-        facet : Optional[str]
-            The facet column used for grouping in addition to the main
-            aggregation columns.
-
-        Returns
-        -------
-        pd.DataFrame
-            The DataFrame of monthly metrics with cumulative sums.
-        """
-        gb_cols = ["project", "fiscal_year"]
-        if facet is not None:
-            gb_cols.append(facet)
-
-        df["cumulative_requests"] = df.groupby(gb_cols)["total_requests"].cumsum()
-        df["cumulative_get_requests"] = df.groupby(gb_cols)[
-            "total_get_requests"
-        ].cumsum()
-        df["cumulative_gb"] = df.groupby(gb_cols)["total_gb"].cumsum()
-
-        return df
-
-    def _reorder_columns(self, df, facet: Optional[str]):
-        """Reorders columns for a DataFrame of aggregated metrics.
-
-        In several class methods, DataFrame columns are appended to the end of
-        the DataFrame, which makes the order of columns not succinct.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            A DataFrame of aggregated metrics with the original column order.
-        facet : Optional[str]
-            The facet column used for grouping, in addition to the main
-            aggregation columns.
-
-        Returns
-        -------
-        pd.DataFrame
-            A DataFrame of aggregated metrics with reordered columns.
-        """
-        columns = [
-            "project",
-            "fiscal_year_quarter",
-            "fiscal_year",
-            "fiscal_month",
-            "fiscal_quarter",
-            "year_month",
-            "year",
-            "month",
-            "total_requests",
-            "cumulative_requests",
-            "total_get_requests",
-            "cumulative_get_requests",
-            "total_gb",
-            "cumulative_gb",
-        ]
-        if facet is not None:
-            columns.insert(1, facet)
-
-        return df[columns]

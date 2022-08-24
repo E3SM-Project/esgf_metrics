@@ -10,7 +10,7 @@ from esgf_metrics.database.settings import engine
 from esgf_metrics.facets import AVAILABLE_FACETS, Project
 from esgf_metrics.logger import setup_custom_logger
 from esgf_metrics.settings import LOGS_DIR, OUTPUT_DIR
-from esgf_metrics.utils import bytes_to
+from esgf_metrics.utils import _cast_period_cols_to_str, bytes_to
 
 logger = setup_custom_logger(__name__)
 
@@ -97,8 +97,8 @@ class LogParser:
         and `log_request` SQL tables respectively.
         """
         logger.info("Casting Period columns to string for database support.")
-        df_log_file = self._cast_period_cols_to_str(self.df_log_file)
-        df_log_request = self._cast_period_cols_to_str(self.df_log_request)
+        df_log_file = _cast_period_cols_to_str(self.df_log_file)
+        df_log_request = _cast_period_cols_to_str(self.df_log_request)
 
         logger.info(f"Inserting {df_log_file.shape[0]} `log_file` objects.")
         df_log_file.to_sql("log_file", con=engine, if_exists="append", index=False)
@@ -344,7 +344,9 @@ class LogParser:
             # Dataset information
             "dataset_id": "",
             "file_id": "",
-            "project": "E3SM" if "/E3SM-Project" not in dataset_path else "E3SM CMIP6",
+            "project": "E3SM Native"
+            if "/E3SM-Project" not in dataset_path
+            else "E3SM CMIP6",
             "realm": None,
             "data_type": None,
             "variable_id": None,
@@ -478,28 +480,5 @@ class LogParser:
         )
         df["fiscal_year"] = df.fiscal_year_quarter.dt.strftime("%F").astype("int")
         df["fiscal_month"] = df.apply(lambda row: E3SM_CY_TO_FY_MAP[row.month], axis=1)
-
-        return df
-
-    def _cast_period_cols_to_str(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Cast the pd.Period dtype to str.
-
-        The method is useful when writing the DataFrame out to the database.
-
-        Parameters
-        ----------
-        df: pd.DataFrame
-            The DataFrame of successful HTTP requests.
-
-        Returns
-        -------
-        pd.DataFrame
-            The DataFrame of successful HTTP requests.
-        """
-        if "year_month" in df.columns:
-            df["year_month"] = df["year_month"].astype(str)
-
-        if "fiscal_year_quarter" in df.columns:
-            df["fiscal_year_quarter"] = df["fiscal_year_quarter"].astype(str)
 
         return df
