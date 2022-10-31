@@ -1,4 +1,5 @@
 """Plot module for plotting ESGF metrics."""
+import pathlib
 from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
@@ -339,6 +340,8 @@ def _save_metrics_and_plots(
     df.to_csv(f"{filename}.csv", index=False)
     fig.savefig(filename, dpi=fig.dpi, facecolor="w", bbox_inches="tight")
 
+    logger.info(f"Saved plot path: {filename}")
+
 
 def _get_filename(
     filename: str, fiscal_year: Optional[str], facet: Optional[str]
@@ -359,7 +362,7 @@ def _get_filename(
     str
         The output filename.
     """
-    sub_dir = "/metrics_by_project"
+    sub_dir = "metrics_by_project"
 
     filename = f"{filename}"
 
@@ -367,10 +370,13 @@ def _get_filename(
         filename = filename + f"_FY{fiscal_year}"
 
     if facet:
-        sub_dir = "/metrics_by_facet"
+        sub_dir = "metrics_by_facet"
         filename = filename + f"_by_{facet}"
 
-    return f"{OUTPUT_DIR}/{sub_dir}/{filename}"
+    directory = f"{OUTPUT_DIR}/{sub_dir}"
+    pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+
+    return f"{directory}/{filename}"
 
 
 def _ax_in_millions(x_val, position=None):
