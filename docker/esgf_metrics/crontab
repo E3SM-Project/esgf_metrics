@@ -1,4 +1,4 @@
 # Absolute paths are specified to avoid funky issues with path references.
 # Source: https://stackoverflow.com/a/72656628
-# Run the Cron job “At 12:00 on Monday”, every Monday.
-0 12 * * Mon ~/miniconda3/bin/conda run -n esgf_metrics_dev python /app/esgf_metrics/main.py > /proc/1/fd/1 2>/proc/1/fd/2
+# Run the Cron job “At 12:00AM on Tuesday”, every Tuesday.
+0 0 * * Tue ~/miniconda3/bin/conda run -n esgf_metrics_dev python /app/esgf_metrics/main.py > /proc/1/fd/1 2>/proc/1/fd/2
