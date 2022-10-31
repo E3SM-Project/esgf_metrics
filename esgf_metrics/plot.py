@@ -337,7 +337,7 @@ def _save_metrics_and_plots(
     """
     filename = _get_filename(filename, fiscal_year, facet)
     df.to_csv(f"{filename}.csv", index=False)
-    fig.savefig(filename, dpi=fig.dpi, facecolor="w")
+    fig.savefig(filename, dpi=fig.dpi, facecolor="w", bbox_inches="tight")
 
 
 def _get_filename(
