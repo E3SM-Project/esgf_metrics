@@ -1,19 +1,16 @@
-from typing import Dict, List, Literal, Tuple, Union, get_args
+from typing import Dict, List, Literal, Tuple, get_args
 
 # Type annotations
-Project = Literal["E3SM", "E3SM CMIP6"]
+Project = Literal["E3SM Native", "E3SM CMIP6"]
 PROJECTS: Tuple[Project, ...] = get_args(Project)
 
 
 # E3SM Facets that are available in file/dataset id and directory format
 # TODO: Get these facets from ESGF directly
-ProjectTitle = Union[Project, Literal["E3SM and E3SM CMIP6"]]
-AVAILABLE_FACETS: Dict[ProjectTitle, Dict[str, List[str]]] = {
-    "E3SM and E3SM CMIP6": {
+AVAILABLE_FACETS: Dict[Project, Dict[str, List[str]]] = {
+    "E3SM Native": {
         "realm": ["ocean", "atmos", "land", "sea-ice"],
         "data_type": ["time-series", "climo", "model-output", "mapping", "restart"],
-    },
-    "E3SM": {
         "time_frequency": [
             "3hr",
             "3hr_snap",
@@ -29,6 +26,8 @@ AVAILABLE_FACETS: Dict[ProjectTitle, Dict[str, List[str]]] = {
         ],
     },
     "E3SM CMIP6": {
+        "realm": ["ocean", "atmos", "land", "sea-ice"],
+        "data_type": ["time-series", "climo", "model-output", "mapping", "restart"],
         "activity": ["C4MIP", "CMIP", "DAMIP", "ScenarioMIP"],
         "variable_id": [
             "abs550aer",
