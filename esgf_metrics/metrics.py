@@ -49,10 +49,10 @@ class MetricsGenerator:
         df_monthly_metrics = _cast_period_cols_to_str(self.df_monthly_metrics)
 
         df_monthly_metrics.to_sql(
-            "metrics_monthly", con=engine, if_exists="append", index=False
+            "metrics_monthly", con=engine, if_exists="replace", index=False
         )
         df_fiscal_metrics.to_sql(
-            "metrics_fiscal", con=engine, if_exists="append", index=False
+            "metrics_fiscal", con=engine, if_exists="replace", index=False
         )
 
     def get_metrics(self):

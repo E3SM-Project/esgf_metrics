@@ -338,9 +338,10 @@ def _save_metrics_and_plots(
     """
     filename = _get_filename(filename, fiscal_year, facet)
     df.to_csv(f"{filename}.csv", index=False)
-    fig.savefig(filename, dpi=fig.dpi, facecolor="w", bbox_inches="tight")
+    logger.info(f"Saved plot path: {filename}.csv")
 
-    logger.info(f"Saved plot path: {filename}")
+    fig.savefig(f"{filename}.png", dpi=fig.dpi, facecolor="w", bbox_inches="tight")
+    logger.info(f"Saved figure path: {filename}.png")
 
 
 def _get_filename(
@@ -362,21 +363,17 @@ def _get_filename(
     str
         The output filename.
     """
-    sub_dir = "metrics_by_project"
-
     filename = f"{filename}"
 
     if fiscal_year:
         filename = filename + f"_FY{fiscal_year}"
 
     if facet:
-        sub_dir = "metrics_by_facet"
         filename = filename + f"_by_{facet}"
 
-    directory = f"{OUTPUT_DIR}/{sub_dir}"
-    pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
-    return f"{directory}/{filename}"
+    return f"{OUTPUT_DIR}/{filename}"
 
 
 def _ax_in_millions(x_val, position=None):
