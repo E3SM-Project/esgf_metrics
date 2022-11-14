@@ -29,5 +29,6 @@ services:
     volumes:
       - .:/app
       - ${LOGS_DIR}:${LOGS_DIR}
+      - ${OUTPUT_DIR}:${OUTPUT_DIR}
     env_file: .env
     command: /start
