@@ -1,12 +1,12 @@
 # ESGF Metrics
 
-A Python package that parses ESGF Apache logs for E3SM data request metrics.
+A repository that parses ESGF Apache Logs and generates E3SM file request metrics for
+Native and CMIP6 formats.
 
 Metrics include:
 
 - Cumulative number of requests
 - Cumulative GB of data downloaded
-- Both metrics above by facet (e.g., E3SM `time_frequency`, CMIP6 `activity_id`)
 
 ## Usage
 
@@ -24,7 +24,18 @@ Metrics include:
    sudo docker-compose up --build
    ```
 
-5. The `esgf_metrics` container will now automatically run `esgf_metrics` on a weekly basis to parse new logs and log requests. The parsed information is added to the postgres database hosted in the `postgres` container.
+5. The `esgf_metrics` container will now automatically run the `esgf_metrics` package
+   using `crontab` at 12:00AM every Tuesday. It will collect new logs, parse them,
+   and generate metrics and plots.
+
+## Helpful Commands
+
+- Check service logs
+
+  ```bash
+  sudo docker-compose logs esgf_metrics
+  sudo docker-compose logs postgres
+  ```
 
 ## Development
 
