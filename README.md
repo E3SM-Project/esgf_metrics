@@ -18,7 +18,7 @@ Metrics include:
    ```
 
 3. Copy `.env.template` as `.env` and configure the environment variables
-4. Build the docker-compose containers
+4. Build the Docker containers using `docker-compose`. Containers include `postgres` and `esgf_metrics`.
 
    ```bash
    sudo docker-compose up --build
@@ -27,6 +27,7 @@ Metrics include:
 5. The `esgf_metrics` container will now automatically run the `esgf_metrics` package
    using `crontab` at 12:00AM every Tuesday. It will collect new logs, parse them,
    and generate metrics and plots.
+   - All related data is stored in the Postgres database under the `postgres` container.
 
 ## Helpful Commands
 
