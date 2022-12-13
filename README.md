@@ -41,6 +41,12 @@ Metrics include:
   sudo docker-compose logs postgres
   ```
 
+- Check crontab configuration
+
+  ```bash
+   sudo docker exec -ti esgf_metrics bash -c "crontab -l"
+  ```
+
 ## Development
 
 1. Install Miniconda
