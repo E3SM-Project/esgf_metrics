@@ -14,5 +14,5 @@ conda run -n esgf_metrics_dev python esgf_metrics/database/initialize.py
 # Source: https://stackoverflow.com/a/41938139
 printenv | grep -v "no_proxy" >> /etc/environment
 
-echo "Running Cron job to parse new logs and generate metrics and plots every 12AM every Tuesday."
+echo "Running Cron job to parse new logs and generate metrics and plots at 8AM every Tuesday (PST)."
 cron -f
