@@ -25,9 +25,12 @@ Metrics include:
    ```
 
 5. The `esgf_metrics` container will now automatically run the `esgf_metrics` package
-   using `crontab` at 12:00AM every Tuesday. It will collect new logs, parse them,
-   and generate metrics and plots.
-   - All related data is stored in the Postgres database under the `postgres` container.
+   using `crontab` at 8:00AM every Tuesday. It will identify new logs, parse them,
+   and generate updated metrics and plots.
+   - There is a separate cronjob on LLNL climate servers that collect access logs from
+     ESGF nodes every day at 10PM. Logs are stored in `/p/cscratch/esgf-http-logs`.
+   - All `esgf_metrics` parsed logs and metrics are stored in the `postgres` service's
+     Postgres database.
 
 ## Helpful Commands
 
@@ -36,6 +39,12 @@ Metrics include:
   ```bash
   sudo docker-compose logs esgf_metrics
   sudo docker-compose logs postgres
+  ```
+
+- Check crontab configuration
+
+  ```bash
+   sudo docker exec -ti esgf_metrics bash -c "crontab -l"
   ```
 
 ## Development
