@@ -15,6 +15,9 @@ dependencies:
   - python-dotenv=0.19.2
   - sqlalchemy=1.4.39
   - psycopg2-binary=2.9.3
+  - openpyxyl
+  - pip
+    - ipwhois
   # Additional
   # ==================
   - bump2version==1.0.1
