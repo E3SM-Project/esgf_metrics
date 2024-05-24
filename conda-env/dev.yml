@@ -9,8 +9,8 @@ dependencies:
   - python >=3.9
   - pip
   - matplotlib >=3.5
-  - numpy=1.22.3
-  - pandas >=2.0
+  - numpy
+  - pandas
   - tqdm
   - python-dotenv
   - psycopg2-binary >=2.9
