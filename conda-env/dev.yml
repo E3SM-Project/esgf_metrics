@@ -6,15 +6,15 @@ channels:
 dependencies:
   # Base
   # ==================
-  - python=3.9.10
-  - pip=22.0.4
-  - matplotlib=3.5.1
-  - numpy=1.22.3
-  - pandas=1.4.1
-  - tqdm=4.63.0
-  - python-dotenv=0.19.2
-  - sqlalchemy=1.4.39
-  - psycopg2-binary=2.9.3
+  - python >=3.9
+  - pip
+  - matplotlib >=3.5
+  - numpy
+  - pandas
+  - tqdm
+  - python-dotenv
+  - psycopg2-binary >=2.9
+  - sqlalchemy >=1.4
   - openpyxyl
   - pip
     - ipwhois

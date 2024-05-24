@@ -34,6 +34,24 @@ Metrics include:
 
 ## Helpful Commands
 
+- supervisorctl
+
+  ```bash
+  sudo supervisorctl stop all
+  sudo supervisorctl start all
+  sudo supervisorctl restart all
+  sudo supervisorctl status
+  supervisorctl tail -f esgf_metrics stdout
+  ```
+
+- systemctl
+
+  ```bash
+  sudo systemctl start docker
+  sudo systemctl stop docker
+  sudo systemctl restart docker
+  ```
+
 - Check service logs
 
   ```bash

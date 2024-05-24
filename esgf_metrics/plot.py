@@ -38,22 +38,27 @@ def plot_cumsum_by_project():
         con=engine,
     )
 
+    # Convert to datetime to show last tick label
+    # https://stackoverflow.com/questions/74041472/last-tick-label-not-showing
+    df["year_month_dt"] = pd.to_datetime(df["year_month"], format="%Y-%m")
+
     base_config: pd.DataFrame.plot.__init__ = {
         "kind": "line",
         "legend": True,
         "sharex": False,
-        "x": "year_month",
+        "x": "year_month_dt",
         "xlabel": "Month",
-        "rot": 45,
+        # FIXME: rot doesn't seem to work with xticks as datetime
+        "rot": 0,
     }
 
-    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 6))
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 8))
     fig.suptitle("E3SM Cumulative Data Requests and Downloads by File Format Type")
     formatter = FuncFormatter(_ax_in_millions)
 
     for index, project in enumerate(PROJECTS):
         df_proj = df.loc[df.project == project]
-        df_proj = df_proj.sort_values(by="year_month")
+        df_proj = df_proj.sort_values(by="year_month_dt")
 
         # Plot the cumulative requests on the first y-axis.
         ax = df_proj.plot(
@@ -73,7 +78,7 @@ def plot_cumsum_by_project():
 
         # Plot the cumulative downloads on the secondary y-axis.
         df_proj.plot(
-            "year_month", "Cumulative Downloads", secondary_y=True, ax=ax, color="r"
+            "year_month_dt", "Cumulative Downloads", secondary_y=True, ax=ax, color="r"
         )
         ax.right_ax.set_ylabel("Downloads (TB)")
         # Align the secondary y-axis using the same ticks.
