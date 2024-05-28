@@ -18,14 +18,13 @@ RUN wget \
 # Configure conda.
 RUN conda --version \
     && conda config --add channels conda-forge \
-    && conda config --set channel_priority strict \
-    && conda install mamba
+    && conda config --set channel_priority strict
 
 # Create the conda environment and cache the packages.
 COPY ./conda-env /conda-env
 RUN . /root/.bashrc \
-      && conda init bash \
-      && mamba env create -f /conda-env/dev.yml
+    && conda init bash \
+    && conda env create -f /conda-env/dev.yml
 
 # Copy the start script (runs the cron job after postgres service is up).
 COPY ./docker/esgf_metrics/start /start
