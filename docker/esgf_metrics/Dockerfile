@@ -17,7 +17,6 @@ RUN wget \
 
 # Configure conda.
 RUN conda --version \
-    && conda config --add channels conda-forge \
     && conda config --set channel_priority strict
 
 # Create the conda environment and cache the packages.

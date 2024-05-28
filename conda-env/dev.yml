@@ -16,8 +16,8 @@ dependencies:
   - psycopg2-binary >=2.9
   - sqlalchemy >=1.4
   - openpyxyl
-  - pip
-    - ipwhois
+  - pip:
+      - ipwhois
   # Additional
   # ==================
   - bump2version==1.0.1
