@@ -15,7 +15,7 @@ dependencies:
   - python-dotenv
   - psycopg2-binary >=2.9
   - sqlalchemy >=1.4
-  - openpyxyl
+  - openpyxl
   - pip:
       - ipwhois
   # Additional
